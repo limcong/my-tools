@@ -127,7 +127,9 @@ class MysqlHelper {
      * @param {Object} updateObj - 更新数据对象
      * @param {Function} callback - 回调函数
      */
+
     updateOne(Kid, updateObj, callback) {
+    //注意，这里的updateObj没必要把所有参数穿进去，只要把需要更新的字段和值传进来就可以，Kid就可以帮你补全剩下的数据了
         this.findArrayById(Kid, (err, result) => {
             //获取旧数据，比较新旧数据的键是否匹配
             var oldData = result[0];
