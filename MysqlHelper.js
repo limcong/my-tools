@@ -1,4 +1,38 @@
+//Lemon——LimCong制作
 var mysql = require('mysql');
+/**
+ * 
+ * @param {Object} conn - 连接对象
+ * @param {String} str - 处理好的sql语句
+ * @param {Number} isfind - 是否是查询语句0-不是 1-查询多个 2-id查询
+ */
+const createAsyncAction = (conn, str, isfind = 0) => {
+    //查询语句，返回data
+    if (isfind) {
+        return new Promise((resolve, reject) => {
+            conn.query(str, function (err, data, field) {
+                if (err) {
+                    reject({ err })
+                }
+                else {
+                    //是否是id查询
+                    const findData = isfind == 2 ? data[0]:data;
+                    resolve({ data:findData, field });
+                }
+            })
+        })
+    }
+    return new Promise((resolve, reject) => {
+        conn.query(str, function (err, field) {
+            if (err) {
+                reject({ err })
+            }
+            else {
+                resolve({ field });
+            }
+        })
+    })
+}
 
 /**
  * 构造器 默认连接本地库，如想变成通用Helper，请加参。
@@ -28,14 +62,13 @@ class MysqlHelper {
      * 该方法封装了连接方法。
      */
     baseBegin() {
-        this.conn.connect((err)=>{
+        this.conn.connect((err) => {
             if (err) {
-                console.log(this.table+" 链接失败");
-                logger.info("error when connecting to db,reConnecting after 2 seconds:", err);
+                console.log(this.table + " 链接失败");
                 setTimeout(connect, 2000);
                 return;
             }
-            console.log(this.table+" 链接成功");
+            console.log(this.table + " 链接成功");
             setInterval(() => {
                 console.log('ping...');
                 this.conn.ping((err) => {
@@ -49,9 +82,8 @@ class MysqlHelper {
     /**
      * 插入一条记录
      * @param {Object} insertObj - 插入的对象键值对。
-     * @param {Function} callback - 回调函数，异步操作。
      */
-    insertOne(insertObj, callback) {
+    insertOne(insertObj) {
         var addKey = [];
         var addVal = [];
         //解析insertObj对象，拆分为数组方便后续处理
@@ -78,27 +110,22 @@ class MysqlHelper {
         str = str.substr(0, str.length - 1);
         str += ");";
         //真查询+异步回调
-        this.conn.query(str, function (err, field) {
-            callback(err, field);
-        })
+        return createAsyncAction(this.conn,str)
     }
     /**
      * 通过ID查询一条记录
      * @param {Number} id - 查询ID
-     * @param {Function} callback - 回调函数
      */
-    findArrayById(id, callback) {
+    findArrayById(id) {
         var str = `select * from ${this.table} where id = ${id}`
-        this.conn.query(str, function (err, result, field) {
-            callback(err, result, field);
-        });
+        //返回promise
+        return createAsyncAction(this.conn,str,2)
     }
     /**
      * 键入对象查询相似数据
      * @param {Object} queryObj - 查询对象
-     * @param {Function} callback - 回调函数
      */
-    find(queryObj, callback) {
+    find(queryObj) {
         var str = "";
         if (queryObj == {}) {
             str = `select * from ${this.table}`
@@ -117,9 +144,8 @@ class MysqlHelper {
             // 清除最后的多余字段
             str = str.substr(0, str.length - 4);
         }
-        this.conn.query(str, function (err, result, field) {
-            callback(err, result, field);
-        })
+        //返回promise
+        return createAsyncAction(this.conn,str,1)
     }
     /**
      * 单条数据更新通过ID定位数据，通过upOBJ更新数据
@@ -128,14 +154,14 @@ class MysqlHelper {
      * @param {Function} callback - 回调函数
      */
     updateOne(Kid, updateObj, callback) {
-    //注意，这里的updateObj没必要把所有参数穿进去，只要把需要更新的字段和值传进来就可以，Kid就可以帮你补全剩下的数据了
+        //注意，这里的updateObj没必要把所有参数穿进去，只要把需要更新的字段和值传进来就可以，Kid就可以帮你补全剩下的数据了
         this.findArrayById(Kid, (err, result) => {
             //获取旧数据，比较新旧数据的键是否匹配
             var oldData = result[0];
             var str = `update ${this.table} set `;
             for (let u in updateObj) {
                 //用旧数据的键比对传参的键
-                if (oldData[u] === undefined) return console.log(u+"输入的键错误，请检查update：" + JSON.stringify(updateObj));
+                if (oldData[u] === undefined) return console.log(u + "输入的键错误，请检查update：" + JSON.stringify(updateObj));
                 oldData[u] = updateObj[u];
             }
             //区分类型
@@ -147,26 +173,23 @@ class MysqlHelper {
             }
             str = str.substr(0, str.length - 1);
             str += ` where id=${Kid}`;
-            this.conn.query(str, function (err, field) {
-                callback(err, field);
-            })
+            return createAsyncAction(this.conn,str)
         })
     }
     /**
      * 
      * @param {Number} Kid - 定位ID
-     * @param {Function} callback - 回调函数
      */
-    deleteOne(Kid, callback) {
+    deleteOne(Kid) {
         var str = `delete from ${this.table} where id = ${Kid}`;
-        this.conn.query(str, function (err, field) {
-            callback(err, field);
-        })
+        return createAsyncAction(this.conn,str)
     }
-    SQL(str,callback){
-        this.conn.query(str,function(err,field){
-            callback(err,field);
-        });
+        /**
+     * 
+     * @param {String} str - 查询的sql语句
+     */
+    SQL(str) {
+        return createAsyncAction(this.conn,str)
     }
 }
 exports.MysqlHelper = MysqlHelper;
