@@ -1,35 +1,28 @@
 //Lemon——LimCong制作
 var mysql = require('mysql');
 /**
- * 
- * @param {Object} conn - 连接对象
+ * 异步封装，使用时可以用await实现异步方法同步编程
+ * @param {Object} conn - 连接池对象
  * @param {String} str - 处理好的sql语句
  * @param {Number} isfind - 是否是查询语句0-不是 1-查询多个 2-id查询
  */
-const createAsyncAction = (conn, str, isfind = 0) => {
-    //查询语句，返回data
-    if (isfind) {
-        return new Promise((resolve, reject) => {
-            conn.query(str, function (err, data, field) {
-                if (err) {
-                    reject({ err })
-                }
-                else {
-                    //是否是id查询
-                    const findData = isfind == 2 ? data[0]:data;
-                    resolve({ data:findData, field });
-                }
-            })
-        })
-    }
+const createAsyncAction = async (conn, str, isfind = 0) => {
     return new Promise((resolve, reject) => {
-        conn.query(str, function (err, field) {
+        conn.query(str, function (err, data, field) {
+            //查询出错，抛出reject
             if (err) {
                 reject({ err })
+                return
             }
-            else {
-                resolve({ field });
+            //存在第三个参数，是查询语句
+            if (field) {
+                //是否是id查询
+                const findData = isfind == 2 ? data[0] : data;
+                resolve({ data: findData, field });
+                return
             }
+            //其他语句
+            resolve({ field: data });
         })
     })
 }
@@ -110,16 +103,16 @@ class MysqlHelper {
         str = str.substr(0, str.length - 1);
         str += ");";
         //真查询+异步回调
-        return createAsyncAction(this.conn,str)
+        return createAsyncAction(this.conn, str)
     }
     /**
-     * 通过ID查询一条记录
+     * 通过ID查询一条记录（注意，这里返回的data不是一个数组，而是单纯的一条记录）
      * @param {Number} id - 查询ID
      */
     findArrayById(id) {
         var str = `select * from ${this.table} where id = ${id}`
         //返回promise
-        return createAsyncAction(this.conn,str,2)
+        return createAsyncAction(this.conn, str, 2)
     }
     /**
      * 键入对象查询相似数据
@@ -145,36 +138,34 @@ class MysqlHelper {
             str = str.substr(0, str.length - 4);
         }
         //返回promise
-        return createAsyncAction(this.conn,str,1)
+        return createAsyncAction(this.conn, str, 1)
     }
     /**
      * 单条数据更新通过ID定位数据，通过upOBJ更新数据
      * @param {Number} Kid - 定位ID
      * @param {Object} updateObj - 更新数据对象
-     * @param {Function} callback - 回调函数
      */
-    updateOne(Kid, updateObj, callback) {
+    async updateOne(Kid, updateObj) {
         //注意，这里的updateObj没必要把所有参数穿进去，只要把需要更新的字段和值传进来就可以，Kid就可以帮你补全剩下的数据了
-        this.findArrayById(Kid, (err, result) => {
-            //获取旧数据，比较新旧数据的键是否匹配
-            var oldData = result[0];
-            var str = `update ${this.table} set `;
-            for (let u in updateObj) {
-                //用旧数据的键比对传参的键
-                if (oldData[u] === undefined) return console.log(u + "输入的键错误，请检查update：" + JSON.stringify(updateObj));
-                oldData[u] = updateObj[u];
-            }
-            //区分类型
-            for (let o in oldData) {
-                if (typeof (oldData[o]) == 'string')
-                    str += `${o} = '${oldData[o]}',`;
-                else
-                    str += `${o} = ${oldData[o]},`;
-            }
-            str = str.substr(0, str.length - 1);
-            str += ` where id=${Kid}`;
-            return createAsyncAction(this.conn,str)
-        })
+        const {data} = await this.findArrayById(Kid)
+        const oldData = data;
+        //获取旧数据，比较新旧数据的键是否匹配
+        var str = `update ${this.table} set `;
+        for (let u in updateObj) {
+            //用旧数据的键比对传参的键
+            if (oldData[u] === undefined) return console.log(u + "输入的键错误，请检查update：" + JSON.stringify(updateObj));
+            oldData[u] = updateObj[u];
+        }
+        //区分类型
+        for (let o in oldData) {
+            if (typeof (oldData[o]) == 'string')
+                str += `${o} = '${oldData[o]}',`;
+            else
+                str += `${o} = ${oldData[o]},`;
+        }
+        str = str.substr(0, str.length - 1);
+        str += ` where id = ${Kid}`;
+        return createAsyncAction(this.conn, str)
     }
     /**
      * 
@@ -182,14 +173,14 @@ class MysqlHelper {
      */
     deleteOne(Kid) {
         var str = `delete from ${this.table} where id = ${Kid}`;
-        return createAsyncAction(this.conn,str)
+        return createAsyncAction(this.conn, str)
     }
-        /**
-     * 
-     * @param {String} str - 查询的sql语句
-     */
+    /**
+ * 
+ * @param {String} str - 查询的sql语句
+ */
     SQL(str) {
-        return createAsyncAction(this.conn,str)
+        return createAsyncAction(this.conn, str)
     }
 }
 exports.MysqlHelper = MysqlHelper;
