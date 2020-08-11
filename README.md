@@ -8,8 +8,8 @@
 #### This helper can only be used as some simple insert, delete, update and select tasks
 
 
-### 通过回调操作处理异步请求
-#### Processing asynchronous requests through callback operations
+### 通过Promise操作处理异步请求
+#### Processing asynchronous requests through Promise operations
 
 
 ### 如果需要使用一些sql关键字，你可以使用sql函数去书写完整的sql语句
