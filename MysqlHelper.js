@@ -72,7 +72,7 @@ class MysqlHelper {
         this.conn = mysql.createConnection({
             host: "localhost",
             user: "root",
-            password: "19990529",
+            password: "root",
             port: "3306",
             database
         });
