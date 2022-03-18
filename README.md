@@ -1,5 +1,7 @@
 # ghost-of-code
 
+### 大二的时候无聊写的
+
 ### 这是MYsql的助手，它使我们无需使用SQL语句即可使用Mysql
 #### this is a helper about MYSQL , it allows us to use MySQL without using SQL statements
 
